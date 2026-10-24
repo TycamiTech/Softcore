@@ -140,5 +140,5 @@ This project is licensed under the [MIT License](LICENSE).
 ---
 
 <div align="center">
-Made with ❤️ by <b>Tycami Tech</b>
+Made by <b>Tycami Tech</b>
 </div>
