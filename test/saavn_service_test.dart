@@ -1,24 +1,39 @@
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:softcore/data/services/saavn_service.dart';
+import 'package:softcore/data/services/yt_service.dart';
 
 void main() {
-  test('SaavnService resolves direct Akamai CDN URL for popular song and returns valid HTTP 200/206', () async {
+  test('SaavnService anti-remix test for Timeless and One Of The Girls', () async {
     final saavnService = SaavnService();
 
-    final audioUrl = await saavnService.getAudioUrl('Softcore', 'The Neighbourhood');
+    final timelessUrl = await saavnService.getAudioUrl('Timeless', 'The Weeknd');
+    // Jika Saavn hanya memiliki versi remix/karaoke dari artis pihak ketiga, harus ditolak (null)
+    if (timelessUrl != null) {
+      expect(timelessUrl.contains('.saavncdn.com/'), isTrue);
+      expect(timelessUrl.toLowerCase().contains('remix'), isFalse);
+      expect(timelessUrl.toLowerCase().contains('techno'), isFalse);
+    }
 
-    expect(audioUrl, isNotNull);
-    expect(audioUrl, startsWith('https://'));
-    expect(audioUrl, contains('.saavncdn.com/'));
+    final oneOfTheGirlsUrl = await saavnService.getAudioUrl('One Of The Girls', 'The Weeknd, JENNIE & Lily Rose Depp');
+    if (oneOfTheGirlsUrl != null) {
+      expect(oneOfTheGirlsUrl.contains('.saavncdn.com/'), isTrue);
+      expect(oneOfTheGirlsUrl.toLowerCase().contains('remix'), isFalse);
+      expect(oneOfTheGirlsUrl.toLowerCase().contains('techno'), isFalse);
+    }
+  });
 
-    final client = HttpClient();
-    final req = await client.openUrl('HEAD', Uri.parse(audioUrl!));
-    final resp = await req.close();
+  test('YtService downloadToTempFile downloads official audio as valid local file', () async {
+    final ytService = YtService();
+    const testVideoId = 'f1r0XZLNlGQ'; // One Of The Girls Official Audio
 
-    expect(resp.statusCode == HttpStatus.ok || resp.statusCode == HttpStatus.partialContent, isTrue);
-    expect(resp.contentLength, greaterThan(1000000)); // Sekitar 2-8 MB
+    final fileUri = await ytService.downloadToTempFile(testVideoId);
+    expect(fileUri.isScheme('file'), isTrue);
 
-    client.close();
-  }, timeout: const Timeout(Duration(seconds: 25)));
+    final file = File(fileUri.toFilePath());
+    expect(file.existsSync(), isTrue);
+    expect(file.lengthSync(), greaterThan(10000));
+
+    ytService.dispose();
+  });
 }

@@ -44,5 +44,21 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Android local machine configuration & secrets
+.gradle/
+**/android/.gradle/
+**/android/local.properties
+**/android/key.properties
+**/*.keystore
+**/*.jks
+
+# Flutter environment & plugin metadata
+.flutter-plugins
+.flutter-plugins-dependencies
+*.env
+
 # Widget Preview related
 .widget_preview/
+
+# Scratch tests
+test/inspect_saavn.dart

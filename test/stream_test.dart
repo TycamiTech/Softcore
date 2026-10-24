@@ -1,3 +1,1 @@
-void main() {
-  // Scratch test placeholder
-}
+void main() {}

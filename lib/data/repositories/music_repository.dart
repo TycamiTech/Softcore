@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import '../../core/local_audio_proxy.dart';
 import '../models/album_model.dart';
 import '../models/artist_model.dart';
 import '../models/track_model.dart';
@@ -88,9 +87,9 @@ class MusicRepository {
     }
   }
 
-  /// Resolusi URL audio: Saavn Direct Akamai CDN (Primer) -> LocalAudioProxy In-Memory (Fallback YouTube)
+  /// Resolusi URL audio: Saavn Direct Akamai CDN (Prioritas #1) -> Download-to-Temp-File YouTube (Fallback)
   Future<Uri> getAudioUrl(TrackModel track) async {
-    // 1. Coba streaming langsung dari Akamai CDN JioSaavn (bebas proxy, bebas IP/cipher YouTube)
+    // 1. Coba streaming langsung dari Akamai CDN JioSaavn (bebas proxy, bebas IP/cipher, instan di Android)
     try {
       final saavnUrl = await _saavnService.getAudioUrl(track.title, track.artist);
       if (saavnUrl != null && saavnUrl.isNotEmpty) {
@@ -101,26 +100,23 @@ class MusicRepository {
       debugPrint('[MusicRepository] SaavnService failed: $e, falling back to YouTube.');
     }
 
-    // 2. Fallback ke YouTube via In-Memory LocalAudioProxy (.m4a RAM buffer)
+    // 2. Fallback YouTube via Download-to-Temp-File (file://) - 100% bebas dari (0) Source Error / proxy loopback
     try {
-      if (!LocalAudioProxy().isRunning) {
-        await LocalAudioProxy().start();
-      }
-      final localUri = LocalAudioProxy().getProxyUrl(track.youtubeVideoId);
-      debugPrint('[MusicRepository] Serving audio stream via LocalAudioProxy RAM buffer: $localUri');
-      return localUri;
+      debugPrint('[MusicRepository] Fallback downloading YouTube audio to temp file for "${track.title}" (${track.youtubeVideoId})...');
+      return await _ytService.downloadToTempFile(track.youtubeVideoId);
     } catch (e) {
-      debugPrint('[MusicRepository] LocalAudioProxy error, trying direct YtService: $e');
-      return await _ytService.resolveStreamUrl(track.youtubeVideoId);
+      debugPrint('[MusicRepository] downloadToTempFile error: $e, falling back to direct stream URI.');
+      return await _ytService.resolveFastAudioUri(track.youtubeVideoId);
     }
   }
 
-  /// Helper untuk resolusi berdasarkan videoId YouTube langsung
+  /// Helper untuk resolusi berdasarkan videoId YouTube langsung via Download-to-Temp-File
   Future<Uri> getAudioUrlByVideoId(String videoId) async {
-    if (!LocalAudioProxy().isRunning) {
-      await LocalAudioProxy().start();
+    try {
+      return await _ytService.downloadToTempFile(videoId);
+    } catch (_) {
+      return await _ytService.resolveFastAudioUri(videoId);
     }
-    return LocalAudioProxy().getProxyUrl(videoId);
   }
 
   /// Mendapatkan detail artis via TheAudioDB

@@ -42,23 +42,37 @@ class InvidiousService {
   static const List<String> blacklistedKeywords = [
     'remix',
     'dj',
-    'koplo',
-    'ngopi',
+    'mashup',
+    ' x ',
+    'vs',
+    'tradução',
+    'traducao',
+    'legendado',
+    'sub español',
+    'lirik',
+    'terjemahan',
+    'bossa nova',
+    'acoustic',
     'cover',
     'live',
-    'bass boost',
-    'jedag jedug',
-    'tiktok',
-    'full album',
+    'karaoke',
+    'instrumental',
     'slowed',
     'reverb',
+    'sped up',
+    'speed up',
+    'nightcore',
+    '8d',
+    'bass boost',
+    'koplo',
+    'jedag jedug',
+    'full album',
+    'playlist',
+    'mix',
     'reaction',
     'kompilasi',
-    'mashup',
-    'karaoke',
-    'speed up',
-    'sped up',
-    'nightcore',
+    'tiktok',
+    'ngopi',
   ];
 
   final RegExp _emojiRegex = RegExp(
@@ -82,7 +96,7 @@ class InvidiousService {
         final response = await _dio.get(
           '$baseUrl/api/v1/search',
           queryParameters: {
-            'q': '$sanitizedQuery official audio',
+            'q': '$sanitizedQuery - Topic official audio',
             'type': 'video',
           },
         );
@@ -108,8 +122,11 @@ class InvidiousService {
             // Reject emoji di judul
             if (_emojiRegex.hasMatch(rawTitle)) continue;
 
-            // Reject kata kunci terlarang
+            // Reject mashup ' x ' atau ' vs '
             final lowerTitle = rawTitle.toLowerCase();
+            if (lowerTitle.contains(' x ') || lowerTitle.contains(' vs ')) continue;
+
+            // Reject kata kunci terlarang
             if (!query.toLowerCase().contains('remix') &&
                 blacklistedKeywords.any((kw) => lowerTitle.contains(kw))) {
               continue;

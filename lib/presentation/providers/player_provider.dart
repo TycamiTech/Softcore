@@ -27,6 +27,7 @@ class PlayerProvider extends ChangeNotifier {
   bool _isShuffle = false;
   bool _isRepeat = false;
   final Set<String> _favorites = {};
+  int _playRequestId = 0;
 
   PlayerProvider({
     AudioPlayerService? audioService,
@@ -98,6 +99,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> playTrack(TrackModel track, {List<TrackModel>? newQueue}) async {
+    final currentReqId = ++_playRequestId;
     _currentTrack = track;
     _isLoading = true;
     _errorMessage = null;
@@ -121,6 +123,11 @@ class PlayerProvider extends ChangeNotifier {
     try {
       final audioUri = await _repository.getAudioUrl(track);
 
+      if (currentReqId != _playRequestId) {
+        debugPrint('[PlayerProvider] Request #$currentReqId superseded before playback, aborting.');
+        return;
+      }
+
       final mediaItem = MediaItem(
         id: track.id,
         album: track.album.isNotEmpty ? track.album : 'softcore',
@@ -131,10 +138,31 @@ class PlayerProvider extends ChangeNotifier {
       );
 
       await _audioService.playUri(mediaItem, audioUri);
+
+      if (currentReqId != _playRequestId) {
+        debugPrint('[PlayerProvider] Request #$currentReqId superseded after playUri, skipping state update.');
+        return;
+      }
+
       _isLoading = false;
       _errorMessage = null;
       notifyListeners();
     } catch (e) {
+      if (currentReqId != _playRequestId) {
+        debugPrint('[PlayerProvider] Request #$currentReqId superseded by #$_playRequestId, ignoring error: $e');
+        return;
+      }
+
+      final errLower = e.toString().toLowerCase();
+      if (errLower.contains('connection aborted') ||
+          errLower.contains('loading interrupted') ||
+          errLower.contains('abort')) {
+        debugPrint('[PlayerProvider] Suppressing aborted/interrupted playback error: $e');
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
       _isLoading = false;
       _errorMessage = 'Gagal memuat audio: $e';
       debugPrint('[PlayerProvider] playTrack error: $e');

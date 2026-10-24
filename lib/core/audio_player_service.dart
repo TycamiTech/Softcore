@@ -35,12 +35,22 @@ class AudioPlayerService {
       // 1. Hentikan pemutaran sebelumnya untuk mencegah race condition atau overlapping
       await _player.stop();
 
-      // 2. Set AudioSource bersih
+      // 2. Set AudioSource (file lokal atau direct CDN URI)
       debugPrint('[AudioPlayerService] 2/3 Setting AudioSource...');
-      final audioSource = AudioSource.uri(
-        streamUri,
-        tag: item,
-      );
+      final AudioSource audioSource;
+      if (streamUri.isScheme('file')) {
+        debugPrint('[AudioPlayerService] Playing from local file source: ${streamUri.toFilePath()}');
+        audioSource = AudioSource.file(
+          streamUri.toFilePath(),
+          tag: item,
+        );
+      } else {
+        debugPrint('[AudioPlayerService] Playing from remote URI source: $streamUri');
+        audioSource = AudioSource.uri(
+          streamUri,
+          tag: item,
+        );
+      }
 
       // Gunakan timeout 15 detik pada setAudioSource agar ExoPlayer tidak hang selamanya jika stream bermasalah
       await _player
